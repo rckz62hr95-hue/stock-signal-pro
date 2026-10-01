@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b1220">
+<title>Stock Signal PRO v5</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0b1220;color:#e7edf7;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+main{max-width:1050px;margin:auto;padding:18px}.top{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+h1{font-size:22px;margin:0}.muted{color:#93a4bd;font-size:12px}.card{background:#111b2e;border:1px solid #22304a;border-radius:16px;padding:14px;margin:12px 0}
+.row{display:flex;gap:8px;flex-wrap:wrap}.grow{flex:1;min-width:170px}
+input,button,select{border:1px solid #31415f;border-radius:10px;background:#0d1728;color:#fff;padding:11px;font-size:14px}
+button{cursor:pointer;background:#18345d}.danger{background:#4a1e2a}.ok{background:#164c3a}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.metric{background:#0d1728;border-radius:12px;padding:11px}.metric b{display:block;font-size:18px;margin-top:4px}
+.signal{font-size:25px;font-weight:800;padding:14px;border-radius:14px}.buy{background:#123d30}.wait{background:#3d3212}.sell{background:#4a1e2a}.neutral{background:#1b2940}
+table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:8px;border-bottom:1px solid #25344d;text-align:left}
+.price{font-size:30px;font-weight:800}.green{color:#58d6a2}.red{color:#ff7d8e}.yellow{color:#ffd36a}
+.small{font-size:12px}.pill{display:inline-block;padding:4px 8px;border-radius:999px;background:#20304a;margin:2px}
+canvas{width:100%;height:240px;background:#0a1322;border-radius:12px}
+@media(max-width:720px){.grid{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:1fr}.price{font-size:25px}}
+</style>
+</head>
+<body><main>
+<div class="top"><div><h1>📈 Stock Signal PRO v5</h1><div class="muted">実戦向け・ルールベース意思決定支援 / 自動発注なし</div></div>
+<button id="refresh">↻ 更新</button></div>
+
+<div class="card">
+<div class="row">
+<input id="code" class="grow" placeholder="銘柄コード 例 9501" inputmode="numeric">
+<input id="name" class="grow" placeholder="銘柄名（任意）">
+<button id="load" class="ok">分析開始</button>
+</div>
+<div class="row" style="margin-top:8px">
+<input id="avg" placeholder="平均取得単価" type="number">
+<input id="shares" placeholder="株数" type="number">
+<select id="tf"><option value="1d">日足</option><option value="5m">5分足</option></select>
+</div>
+<div class="muted" style="margin-top:8px">※ Yahoo Finance の公開チャートデータを利用。取得できない環境では「データ取得失敗」と表示されます。</div>
+</div>
+
+<div id="status" class="card muted">銘柄コードを入力してください。</div>
+
+<section id="result" style="display:none">
+<div class="card">
+<div class="grid">
+<div class="metric">現在値<b id="price">-</b><span id="chg" class="small"></span></div>
+<div class="metric">総合スコア<b id="score">-</b><span class="small">0〜100</span></div>
+<div class="metric">RSI14<b id="rsi">-</b></div>
+<div class="metric">ATR14<b id="atr">-</b></div>
+</div>
+<div id="signal" class="signal neutral" style="margin-top:10px">判定：-</div>
+<div id="action" style="margin-top:10px"></div>
+</div>
+
+<div class="card"><h3>🎯 売買ポイント</h3>
+<div class="grid3">
+<div class="metric">押し目候補<b id="dip">-</b><span class="small">支持帯</span></div>
+<div class="metric">確認買い<b id="confirm">-</b><span class="small">上抜け確認</span></div>
+<div class="metric">警戒ライン<b id="stop">-</b><span class="small">支持割れ</span></div>
+</div>
+<div id="scenario" style="margin-top:10px"></div>
+</div>
+
+<div class="card"><h3>📊 テクニカル</h3>
+<canvas id="chart" width="1000" height="240"></canvas>
+<div id="tech" class="grid3" style="margin-top:10px"></div>
+</div>
+
+<div class="card"><h3>🌏 地合い</h3>
+<div class="grid3">
+<div class="metric">日経225<b id="nikkei">取得中</b></div>
+<div class="metric">USD/JPY<b id="fx">取得中</b></div>
+<div class="metric">VIX<b id="vix">取得中</b></div>
+</div>
+<div class="muted" style="margin-top:8px">地合いデータは補助材料。株価シグナルだけで売買を確定しません。</div>
+</div>
+
+<div class="card"><h3>💰 保有ポジション</h3><div id="holding">平均単価と株数を入力すると表示</div></div>
+</section>
+
+<div class="card"><h3>⚙️ 使い方</h3>
+<ol class="small"><li>銘柄コードを入力（例：9501）</li><li>「分析開始」→ 日足を取得して指標を計算</li><li>「今買う」だけでなく、押し目・確認買い・警戒ラインを確認</li><li>保有株なら平均単価・株数を入力</li></ol>
+<div class="muted">これは予測機ではなく、複数指標を一定ルールで整理する意思決定支援ツールです。APIの遅延・欠損・遅延価格には注意してください。</div>
+</div>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+let lastData=null;
+function sma(a,n){return a.map((_,i)=>i+1<n?null:a.slice(i-n+1,i+1).reduce((x,y)=>x+y,0)/n)}
+function ema(a,n){let k=2/(n+1),e=null,r=[];for(let x of a){e=e==null?x:x*k+e*(1-k);r.push(e)}return r}
+function rsi(a,n=14){let r=[null],g=0,l=0;for(let i=1;i<a.length;i++){let d=a[i]-a[i-1];g=(g*(n-1)+Math.max(d,0))/n;l=(l*(n-1)+Math.max(-d,0))/n;r.push(l===0?100:100-100/(1+g/l))}return r}
+function atr(h,l,c,n=14){let tr=c.map((x,i)=>i?Math.max(h[i]-l[i],Math.abs(h[i]-c[i-1]),Math.abs(l[i]-c[i-1])):h[i]-l[i]);let s=sma(tr,n);return s}
+function fmt(x){return x==null||!isFinite(x)?"-":Number(x).toLocaleString(undefined,{maximumFractionDigits:2})}
+async function yahoo(sym,range="1y",interval="1d"){
+ const u=`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=${range}&interval=${interval}&includePrePost=false`;
+ const r=await fetch(u); if(!r.ok)throw Error("HTTP "+r.status); return (await r.json()).chart.result[0];
+}
+function calc(d){
+ let q=d.indicators.quote[0], c=q.close.map(Number),h=q.high.map(Number),l=q.low.map(Number),v=q.volume.map(Number);
+ let ma5=sma(c,5),ma25=sma(c,25),ma75=sma(c,75),ma200=sma(c,200),R=rsi(c),A=atr(h,l,c);
+ let ef=ema(c,12),es=ema(c,26),mac=ef.map((x,i)=>x-es[i]),sig=ema(mac,9),hist=mac.map((x,i)=>x-sig[i]);
+ let i=c.length-1,p=c[i], avgV=v.slice(-20).reduce((a,b)=>a+b,0)/20;
+ let hi20=Math.max(...h.slice(-20)),lo20=Math.min(...l.slice(-20)),hi60=Math.max(...h.slice(-60)),lo60=Math.min(...l.slice(-60));
+ let score=50, reasons=[];
+ if(p>ma25[i]){score+=8;reasons.push("25日線より上")}else{score-=8;reasons.push("25日線より下")}
+ if(p>ma75[i]){score+=8;reasons.push("75日線より上")}else{score-=8;reasons.push("75日線より下")}
+ if(ma25[i]>ma75[i]){score+=6;reasons.push("25日線>75日線")}else{score-=6}
+ if(R[i]>=50&&R[i]<=70){score+=8;reasons.push("RSIが上昇余地帯")}else if(R[i]>75){score-=8;reasons.push("RSI過熱")}else if(R[i]<30){score+=3;reasons.push("RSI売られ過ぎ")}
+ if(hist[i]>0){score+=7;reasons.push("MACDヒストグラム陽性")}else{score-=7;reasons.push("MACDヒストグラム陰性")}
+ if(v[i]>avgV*1.5){score+=6;reasons.push("出来高急増")} 
+ score=Math.max(0,Math.min(100,score));
+ let label=score>=72?"買い候補":score>=58?"押し目・確認待ち":score>=43?"様子見":score>=28?"弱含み・警戒":"売り警戒";
+ let cls=score>=72?"buy":score>=58?"wait":score<43?"sell":"neutral";
+ let dip=Math.max(lo20,lo60), confirm=Math.max(hi20,ma25[i]), stop=Math.min(lo20,lo60);
+ return {c,h,l,v,p,ma5,ma25,ma75,ma200,R,A,mac,sig,hist,score,label,cls,reasons,dip,confirm,stop,hi20,lo20,hi60,lo60,avgV};
+}
+function draw(d){
+ const cv=$("chart"),ctx=cv.getContext("2d"),w=cv.width,h=cv.height;ctx.clearRect(0,0,w,h);
+ let a=d.c.slice(-120),min=Math.min(...a),max=Math.max(...a),pad=18;
+ ctx.strokeStyle="#2d3b53";ctx.lineWidth=1;for(let j=0;j<5;j++){let y=pad+j*(h-2*pad)/4;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke()}
+ function line(arr,style){ctx.strokeStyle=style;ctx.lineWidth=2;ctx.beginPath();arr.forEach((x,i)=>{if(x==null)return;let xx=i*(w/(a.length-1)),yy=pad+(max-x)/(max-min)*(h-2*pad);i?ctx.lineTo(xx,yy):ctx.moveTo(xx,yy)});ctx.stroke()}
+ line(a,"#e7edf7");line(d.ma25.slice(-120),"#ffd36a");line(d.ma75.slice(-120),"#58a6ff");
+}
+async function load(){
+ let code=$("code").value.trim().replace(/\.T$/i,""); if(!code)return;
+ $("status").textContent="データ取得中…";
+ try{
+  let data=await yahoo(code+".T","1y","1d"); lastData=calc(data);
+  let d=lastData,i=d.c.length-1,prev=d.c[i-1],chg=(d.p/prev-1)*100;
+  $("result").style.display="block";$("status").textContent=`${$("name").value||code}：分析完了`;
+  $("price").textContent=fmt(d.p);$("chg").textContent=` ${chg>=0?"+":""}${chg.toFixed(2)}%`;
+  $("chg").className="small "+(chg>=0?"green":"red");
+  $("score").textContent=d.score;$("rsi").textContent=fmt(d.R[i]);$("atr").textContent=fmt(d.A[i]);
+  $("signal").className="signal "+d.cls;$("signal").textContent="判定："+d.label;
+  $("action").innerHTML=`<b>判断理由：</b> ${d.reasons.join(" / ")}<br><span class="small">※単一指標ではなく複数条件を合算。</span>`;
+  $("dip").textContent=fmt(d.dip);$("confirm").textContent=fmt(d.confirm);$("stop").textContent=fmt(d.stop);
+  $("scenario").innerHTML=`<span class="pill">20日高値 ${fmt(d.hi20)}</span><span class="pill">20日安値 ${fmt(d.lo20)}</span><span class="pill">60日高値 ${fmt(d.hi60)}</span><span class="pill">60日安値 ${fmt(d.lo60)}</span>`;
+  $("tech").innerHTML=[
+   ["MA5",fmt(d.ma5[i])],["MA25",fmt(d.ma25[i])],["MA75",fmt(d.ma75[i])],["MA200",fmt(d.ma200[i])],
+   ["MACD",fmt(d.mac[i])],["Signal",fmt(d.sig[i])],["出来高/20日平均",(d.v[i]/d.avgV).toFixed(2)+"倍"],["20日レンジ",fmt(d.lo20)+" ～ "+fmt(d.hi20)],["60日レンジ",fmt(d.lo60)+" ～ "+fmt(d.hi60)]
+  ].map(x=>`<div class="metric">${x[0]}<b>${x[1]}</b></div>`).join("");
+  draw(d); holding(d.p);
+  // context indices
+  try{let n=await yahoo("%5EN225","5d","1d");$("nikkei").textContent=fmt(n.meta.regularMarketPrice)}
+  catch(e){$("nikkei").textContent="取得不可"}
+  try{let f=await yahoo("JPY=X","5d","1d");$("fx").textContent=fmt(f.meta.regularMarketPrice)}
+  catch(e){$("fx").textContent="取得不可"}
+  try{let x=await yahoo("%5EVIX","5d","1d");$("vix").textContent=fmt(x.meta.regularMarketPrice)}
+  catch(e){$("vix").textContent="取得不可"}
+ }catch(e){$("status").textContent="データ取得失敗："+e.message+"（ブラウザのCORS/API制限の可能性があります）";$("result").style.display="none"}
+}
+function holding(p){
+ let avg=Number($("avg").value),sh=Number($("shares").value);if(!avg||!sh){$("holding").textContent="平均単価と株数を入力すると表示";return}
+ let pl=(p-avg)*sh, pct=(p/avg-1)*100;
+ $("holding").innerHTML=`平均 ${fmt(avg)}円 × ${fmt(sh)}株　→　評価額 ${fmt(p*sh)}円<br><b class="${pl>=0?"green":"red"}">${pl>=0?"+":""}${fmt(pl)}円 (${pct>=0?"+":""}${pct.toFixed(2)}%)</b>`;
+}
+$("load").onclick=load;$("refresh").onclick=load;
+$("avg").oninput=()=>lastData&&holding(lastData.p);$("shares").oninput=()=>lastData&&holding(lastData.p);
+$("code").addEventListener("keydown",e=>{if(e.key==="Enter")load()});
+</script></body></html>
