@@ -166,7 +166,8 @@ async function load(){
 
 const range=tf==="5m"?"5d":"1y";
 
-let data=await yahoo(code+".T",range,tf);
+let data=await yahoo(code+".T",range,tf);lastData=calc(data);
+  
   let d=lastData,i=d.c.length-1,prev=d.c[i-1],chg=(d.p/prev-1)*100;
   $("result").style.display="block";$("status").textContent=`${$("name").value||code}：分析完了`;
   $("price").textContent=fmt(d.p);$("chg").textContent=` ${chg>=0?"+":""}${chg.toFixed(2)}%`;
