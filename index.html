@@ -35,8 +35,7 @@ canvas{width:100%;height:240px;background:#0a1322;border-radius:12px}
 <div class="row" style="margin-top:8px">
 <input id="avg" placeholder="平均取得単価" type="number">
 <input id="shares" placeholder="株数" type="number">
-<select id="tf"><option value="1d">日足</option><option value="5m">5分足</option></select>
-</div>
+<select id="tf"><option value="5m">5分足</option><option value="1d">日足</option><option value="1wk">週足</option><option value="1mo">月足</option></select>
 <div class="muted" style="margin-top:8px">※ Yahoo Finance の公開チャートデータを利用。取得できない環境では「データ取得失敗」と表示されます。</div>
 </div>
 
@@ -164,7 +163,7 @@ async function load(){
  try{
   const tf=$("tf").value;
 
-const range=tf==="5m"?"5d":"1y";
+const range=tf==="5m"?"5d":tf==="1d"?"1y":tf==="1wk"?"5y":"10y";
 
 let data=await yahoo(code+".T",range,tf);lastData=calc(data);
   
