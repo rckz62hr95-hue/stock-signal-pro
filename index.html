@@ -168,7 +168,7 @@ const range=tf==="5m"?"5d":tf==="1d"?"1y":tf==="1wk"?"5y":"10y";
 
 let data=await yahoo(code+".T",range,tf);lastData=calc(data);
   
-  let d=lastData,i=d.c.length-1,base=data.meta?.previousClose??d.c[i-1],chg=(d.p/base-1)*100;
+  let d=lastData,i=d.c.length-1,base=Number(data.meta?.previousClose)||d.c[i-1],chg=(d.p/base-1)*100;
   $("result").style.display="block";$("status").textContent=`${$("name").value||code}：分析完了`;
   $("price").textContent=fmt(d.p);$("chg").textContent=` ${chg>=0?"+":""}${chg.toFixed(2)}%`;
   $("chg").className="small "+(chg>=0?"green":"red");
