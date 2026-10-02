@@ -93,9 +93,44 @@ function ema(a,n){let k=2/(n+1),e=null,r=[];for(let x of a){e=e==null?x:x*k+e*(1
 function rsi(a,n=14){let r=[null],g=0,l=0;for(let i=1;i<a.length;i++){let d=a[i]-a[i-1];g=(g*(n-1)+Math.max(d,0))/n;l=(l*(n-1)+Math.max(-d,0))/n;r.push(l===0?100:100-100/(1+g/l))}return r}
 function atr(h,l,c,n=14){let tr=c.map((x,i)=>i?Math.max(h[i]-l[i],Math.abs(h[i]-c[i-1]),Math.abs(l[i]-c[i-1])):h[i]-l[i]);let s=sma(tr,n);return s}
 function fmt(x){return x==null||!isFinite(x)?"-":Number(x).toLocaleString(undefined,{maximumFractionDigits:2})}
-async function yahoo(sym,range="1y",interval="1d"){
- const u=`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=${range}&interval=${interval}&includePrePost=false`;
- const r=await fetch(u); if(!r.ok)throw Error("HTTP "+r.status); return (await r.json()).chart.result[0];
+ async function yahoo(sym,range="1y",interval="1d"){
+
+  const u=`https://stock-signal-pro.dpgcnyf8wj.workers.dev/api/chart?symbol=${encodeURIComponent(sym)}&range=${encodeURIComponent(range)}&interval=${encodeURIComponent(interval)}`;
+
+  const r=await fetch(u);
+
+  const z=await r.json();
+
+  if(!r.ok)throw Error(z.detail?.join(" / ")||z.error||`HTTP ${r.status}`);
+
+  return {
+
+    timestamp:z.timestamp,
+
+    indicators:{quote:[{
+
+      open:z.open,
+
+      high:z.high,
+
+      low:z.low,
+
+      close:z.close,
+
+      volume:z.volume
+
+    }]},
+
+    meta:{
+
+      ...(z.meta||{}),
+
+      regularMarketPrice:z.meta?.regularMarketPrice??z.close?.filter(x=>x!=null).at(-1)
+
+    }
+
+  };
+
 }
 function calc(d){
  let q=d.indicators.quote[0], c=q.close.map(Number),h=q.high.map(Number),l=q.low.map(Number),v=q.volume.map(Number);
